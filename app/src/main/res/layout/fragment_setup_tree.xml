@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+        <ImageView
+            android:id="@+id/iconImage"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginTop="32dp"
+            android:src="@drawable/ic_tree"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/purple_500" />
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/setup_tree_selection"
+            android:textAlignment="center"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/iconImage" />
+        <TextView
+            android:id="@+id/descriptionText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_select_tree"
+            android:textAlignment="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/titleText" />
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/descriptionText" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/treesRecyclerView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:clipToPadding="false"
+            android:paddingBottom="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/descriptionText" />
+        <TextView
+            android:id="@+id/noTreesText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:text="Aucun arbre trouvé"
+            android:textAlignment="center"
+            android:textColor="@color/text_hint"
+            android:textSize="16sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/descriptionText" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

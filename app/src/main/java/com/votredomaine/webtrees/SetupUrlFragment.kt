@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.google.android.material.textfield.TextInputEditText
+import android.text.Editable
+import android.text.TextWatcher
 
 class SetupUrlFragment : Fragment() {
 
@@ -21,33 +23,69 @@ class SetupUrlFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         urlInput = view.findViewById(R.id.urlInput)
-        
+
         // Charger l'URL si déjà enregistrée
         val prefsManager = PreferencesManager(requireContext())
         prefsManager.getSiteUrl()?.let {
-            urlInput.setText(it)
+            // Enlever le https:// pour l'affichage
+            val displayUrl = it.removePrefix("https://").removePrefix("http://")
+            urlInput.setText(displayUrl)
         }
+
+        // Ajouter un TextWatcher pour nettoyer automatiquement
+        urlInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                // Enlever automatiquement http:// ou https:// si l'utilisateur les tape
+                val text = s.toString()
+                if (text.startsWith("https://") || text.startsWith("http://")) {
+                    urlInput.removeTextChangedListener(this)
+                    val cleaned = text.removePrefix("https://").removePrefix("http://")
+                    urlInput.setText(cleaned)
+                    urlInput.setSelection(cleaned.length)
+                    urlInput.addTextChangedListener(this)
+                }
+            }
+        })
     }
 
     fun getUrl(): String {
-        return urlInput.text.toString().trim()
+        val input = urlInput.text.toString().trim()
+
+        // Nettoyer l'URL
+        var cleaned = input
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .trimEnd('/')
+
+        // Ajouter automatiquement https://
+        return "https://$cleaned"
     }
 
     fun validateUrl(): Boolean {
-        val url = getUrl()
-        
-        if (url.isEmpty()) {
+        val input = urlInput.text.toString().trim()
+
+        if (input.isEmpty()) {
             urlInput.error = getString(R.string.error_empty_url)
             return false
         }
-        
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            urlInput.error = getString(R.string.error_invalid_url)
+
+        // Vérifier que c'est un nom de domaine valide
+        val cleaned = input
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .trimEnd('/')
+
+        if (!cleaned.contains(".")) {
+            urlInput.error = "URL invalide. Exemple: genealogie.monsite.com"
             return false
         }
-        
+
         urlInput.error = null
         return true
     }

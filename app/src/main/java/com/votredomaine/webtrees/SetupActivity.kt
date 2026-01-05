@@ -15,23 +15,23 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var step1Indicator: View
     private lateinit var step2Indicator: View
     private lateinit var step3Indicator: View
-    
+
     private lateinit var adapter: SetupPagerAdapter
     private lateinit var prefsManager: PreferencesManager
-    
+
     private var currentStep = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setup)
-        
+
         prefsManager = PreferencesManager(this)
-        
+
         if (prefsManager.isSetupCompleted()) {
             navigateToMainActivity()
             return
         }
-        
+
         initViews()
         setupViewPager()
         setupButtonListeners()
@@ -44,13 +44,16 @@ class SetupActivity : AppCompatActivity() {
         step1Indicator = findViewById(R.id.step1Indicator)
         step2Indicator = findViewById(R.id.step2Indicator)
         step3Indicator = findViewById(R.id.step3Indicator)
+
+        // Cacher le 3ème indicateur
+        step3Indicator.visibility = View.GONE
     }
 
     private fun setupViewPager() {
         adapter = SetupPagerAdapter(this)
         viewPager.adapter = adapter
         viewPager.isUserInputEnabled = false
-        
+
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 currentStep = position
@@ -65,14 +68,13 @@ class SetupActivity : AppCompatActivity() {
             when (currentStep) {
                 0 -> handleStep1()
                 1 -> handleStep2()
-                2 -> handleStep3()
             }
         }
     }
 
     private fun handleStep1() {
         val fragment = adapter.fragments[0] as SetupUrlFragment
-        
+
         if (fragment.validateUrl()) {
             val url = fragment.getUrl()
             prefsManager.saveSiteUrl(url)
@@ -82,46 +84,33 @@ class SetupActivity : AppCompatActivity() {
 
     private fun handleStep2() {
         val fragment = adapter.fragments[1] as SetupCredentialsFragment
-        
+
         if (fragment.validateCredentials()) {
             val username = fragment.getUsername()
             val password = fragment.getPassword()
             prefsManager.saveCredentials(username, password)
-            viewPager.currentItem = 2
-        }
-    }
 
-    private fun handleStep3() {
-        val fragment = adapter.fragments[2] as SetupTreeFragment
-        
-        if (fragment.validateTree()) {
-            val tree = fragment.getSelectedTree()
-            if (tree != null) {
-                prefsManager.saveDefaultTree(tree.name)
-                prefsManager.setSetupCompleted(true)
-                
-                Toast.makeText(this, "Configuration terminée !", Toast.LENGTH_SHORT).show()
-                navigateToMainActivity()
-            }
-        } else {
-            Toast.makeText(this, getString(R.string.error_no_tree_selected), Toast.LENGTH_SHORT).show()
+            // Enregistrer un arbre par défaut bidon
+            prefsManager.saveDefaultTree("default")
+            prefsManager.setSetupCompleted(true)
+
+            Toast.makeText(this, "Configuration terminée !", Toast.LENGTH_SHORT).show()
+            navigateToMainActivity()
         }
     }
 
     private fun updateIndicators() {
         step1Indicator.setBackgroundResource(R.drawable.indicator_inactive)
         step2Indicator.setBackgroundResource(R.drawable.indicator_inactive)
-        step3Indicator.setBackgroundResource(R.drawable.indicator_inactive)
-        
+
         when (currentStep) {
             0 -> step1Indicator.setBackgroundResource(R.drawable.indicator_active)
             1 -> step2Indicator.setBackgroundResource(R.drawable.indicator_active)
-            2 -> step3Indicator.setBackgroundResource(R.drawable.indicator_active)
         }
     }
 
     private fun updateButtonText() {
-        buttonNext.text = if (currentStep == 2) {
+        buttonNext.text = if (currentStep == 1) {
             getString(R.string.button_finish)
         } else {
             getString(R.string.button_next)

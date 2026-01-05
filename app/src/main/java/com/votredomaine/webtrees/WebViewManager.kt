@@ -4,13 +4,23 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import android.webkit.CookieManager
+import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.net.http.SslError
 import android.view.View
 import android.widget.ProgressBar
+import android.util.Log
 
 class WebViewManager(
     private val webView: WebView,
-    private val progressBar: ProgressBar
+    private val progressBar: ProgressBar,
+    private val username: String,
+    private val password: String
 ) {
+
+    private var hasAttemptedLogin = false
+    var onPageLoadedListener: (() -> Unit)? = null
 
     fun setupWebView() {
         webView.settings.apply {
@@ -22,19 +32,48 @@ class WebViewManager(
             displayZoomControls = false
             loadWithOverviewMode = true
             useWideViewPort = true
+            cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
         webView.webViewClient = object : WebViewClient() {
+
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+                handler?.proceed()
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                Log.e("WebViewManager", "Error: ${error?.description}")
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                injectCustomCSS()
+                Log.d("WebViewManager", "Page finished: $url")
+
+                if (url?.contains("login") == true && !hasAttemptedLogin) {
+                    hasAttemptedLogin = true
+                    view?.postDelayed({
+                        attemptAutoLogin()
+                    }, 500)
+                } else {
+                    view?.postDelayed({
+                        injectAggressiveCSS()
+                        onPageLoadedListener?.invoke()
+                    }, 500)
+                }
+
                 hideProgressBar()
             }
 
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
             }
         }
@@ -52,143 +91,282 @@ class WebViewManager(
         }
     }
 
-    private fun injectCustomCSS() {
+    private fun attemptAutoLogin() {
+        val jsCode = """
+            javascript:(function() {
+                try {
+                    var usernameField = document.querySelector('input[name="username"]') || 
+                                       document.querySelector('input[type="text"]');
+                    var passwordField = document.querySelector('input[name="password"]') || 
+                                       document.querySelector('input[type="password"]');
+                    var loginForm = document.querySelector('form');
+                    
+                    if (usernameField && passwordField) {
+                        usernameField.value = '$username';
+                        passwordField.value = '$password';
+                        if (loginForm) {
+                            loginForm.submit();
+                        }
+                    }
+                } catch(e) {}
+            })()
+        """.trimIndent()
+
+        webView.loadUrl(jsCode)
+    }
+
+    private fun injectAggressiveCSS() {
         val css = """
             javascript:(function() {
+                // Supprimer les anciennes feuilles de style
+                var oldStyle = document.getElementById('mobile-override');
+                if (oldStyle) oldStyle.remove();
+                
                 var style = document.createElement('style');
+                style.id = 'mobile-override';
                 style.innerHTML = `
-                    body {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        background: #f5f5f5 !important;
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+                    /* FORCER LE STYLE - IMPORTANT PARTOUT */
+                    * {
+                        box-sizing: border-box !important;
                     }
                     
-                    .wt-header-wrapper, .wt-footer-container, #wt-footer {
+                    body, html {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #f0f0f0 !important;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+                        font-size: 15px !important;
+                        line-height: 1.5 !important;
+                        color: #333 !important;
+                        overflow-x: hidden !important;
+                    }
+                    
+                    /* CACHER TOUT LE CHROME WEBTREES */
+                    header, nav, footer,
+                    .wt-header-wrapper, .wt-header-container,
+                    .wt-footer-wrapper, .wt-footer-container,
+                    .wt-primary-navigation, .wt-secondary-navigation,
+                    .wt-user-menu, .breadcrumb,
+                    [class*="header"], [class*="Header"],
+                    [class*="footer"], [class*="Footer"],
+                    [class*="navigation"], [class*="Navigation"],
+                    [id*="header"], [id*="Header"],
+                    [id*="footer"], [id*="Footer"] {
+                        display: none !important;
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        opacity: 0 !important;
+                    }
+                    
+                    /* SAUF LE SÉLECTEUR D'ARBRE QU'ON CACHE AUSSI CAR ON LE GÈRE DANS L'APP */
+                    .wt-tree-name, .tree-menu, select[name="tree"],
+                    .control-panel, .wt-tree-selector {
                         display: none !important;
                     }
                     
-                    .wt-main-container, .wt-main, main {
-                        padding: 0 !important;
-                        margin: 0 !important;
+                    /* FORCER CONTAINER PLEINE LARGEUR */
+                    .container, .container-fluid,
+                    .wt-main-wrapper, .wt-main-container,
+                    .wt-main, main, #content,
+                    .wt-page-content, .row {
+                        width: 100% !important;
                         max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                     }
                     
-                    .wt-facts-table, .wt-page-content, .card {
+                    /* SIDEBAR */
+                    .wt-sidebar, aside, .col-sm-3, .col-md-3, .col-lg-3 {
+                        display: none !important;
+                    }
+                    
+                    /* CONTENU PRINCIPAL PLEINE LARGEUR */
+                    .col-sm-9, .col-md-9, .col-lg-9,
+                    .wt-main-container > div {
+                        width: 100% !important;
+                        flex: 0 0 100% !important;
+                        max-width: 100% !important;
+                        padding: 0 !important;
+                    }
+                    
+                    /* CARTES BLANCHES STYLE APP */
+                    .card, .wt-facts-table,
+                    .person-box, .wt-individual-list-item,
+                    .wt-page-options, section, article,
+                    [class*="card"], [class*="Card"],
+                    table.table {
                         background: white !important;
-                        border-radius: 0 !important;
-                        box-shadow: none !important;
-                        margin: 1px 0 !important;
-                        padding: 20px !important;
                         border: none !important;
+                        border-radius: 0 !important;
+                        margin: 0 0 2px 0 !important;
+                        padding: 16px !important;
+                        box-shadow: none !important;
                     }
                     
-                    h1, h2, h3 {
-                        color: #333 !important;
+                    /* TITRES */
+                    h1, h2, h3, h4, h5, h6 {
                         font-weight: 600 !important;
+                        margin: 12px 0 8px 0 !important;
+                        padding: 0 !important;
                     }
                     
-                    h2 {
-                        font-size: 22px !important;
-                        margin-bottom: 15px !important;
+                    h1 { 
+                        font-size: 22px !important; 
+                        color: #1a1a1a !important;
+                    }
+                    h2 { 
+                        font-size: 18px !important; 
                         color: #667eea !important;
                     }
+                    h3 { 
+                        font-size: 16px !important; 
+                        color: #333 !important;
+                    }
                     
+                    /* TABLES EN MODE LISTE */
                     table {
                         width: 100% !important;
                         border-collapse: collapse !important;
+                        border: none !important;
+                        background: transparent !important;
                     }
                     
-                    table tr {
+                    table thead {
+                        background: #f5f5f5 !important;
+                    }
+                    
+                    table th {
+                        padding: 10px 8px !important;
+                        font-size: 13px !important;
+                        font-weight: 600 !important;
+                        color: #666 !important;
+                        border-bottom: 2px solid #e0e0e0 !important;
+                    }
+                    
+                    table td {
+                        padding: 10px 8px !important;
+                        font-size: 14px !important;
                         border-bottom: 1px solid #f0f0f0 !important;
                     }
                     
-                    table td, table th {
-                        padding: 12px 0 !important;
-                        border: none !important;
-                        font-size: 14px !important;
+                    table tr:hover {
+                        background: #f9f9f9 !important;
                     }
                     
-                    table td:first-child, table th:first-child {
-                        color: #666 !important;
-                        font-weight: normal !important;
-                        width: 40% !important;
-                    }
-                    
-                    table td:last-child {
-                        color: #333 !important;
-                        font-weight: 500 !important;
-                        text-align: right !important;
-                    }
-                    
+                    /* LIENS */
                     a {
                         color: #667eea !important;
                         text-decoration: none !important;
-                    }
-                    
-                    .btn, button, input[type="submit"] {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                        color: white !important;
-                        border: none !important;
-                        padding: 12px 24px !important;
-                        border-radius: 12px !important;
-                        font-size: 16px !important;
                         font-weight: 500 !important;
                     }
                     
-                    input[type="text"], input[type="search"], input[type="email"], select, textarea {
-                        width: 100% !important;
-                        padding: 12px !important;
-                        border: 1px solid #e0e0e0 !important;
-                        border-radius: 8px !important;
-                        font-size: 16px !important;
-                        margin: 8px 0 !important;
+                    a:active {
+                        opacity: 0.7 !important;
                     }
                     
+                    /* BOUTONS */
+                    .btn, button, 
+                    input[type="submit"], input[type="button"],
+                    [class*="btn"], [class*="Btn"],
+                    [class*="button"], [class*="Button"] {
+                        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+                        color: white !important;
+                        border: none !important;
+                        padding: 10px 20px !important;
+                        border-radius: 8px !important;
+                        font-size: 14px !important;
+                        font-weight: 600 !important;
+                        min-height: 44px !important;
+                        display: inline-block !important;
+                        text-align: center !important;
+                    }
+                    
+                    .btn-secondary, .btn-outline {
+                        background: white !important;
+                        color: #667eea !important;
+                        border: 2px solid #667eea !important;
+                    }
+                    
+                    /* FORMULAIRES */
+                    input[type="text"], input[type="search"],
+                    input[type="email"], input[type="password"],
+                    input[type="number"], input[type="tel"],
+                    input[type="date"], select, textarea {
+                        width: 100% !important;
+                        padding: 12px !important;
+                        border: 1px solid #ddd !important;
+                        border-radius: 8px !important;
+                        font-size: 15px !important;
+                        margin: 6px 0 !important;
+                        background: white !important;
+                    }
+                    
+                    /* IMAGES */
                     img {
                         max-width: 100% !important;
                         height: auto !important;
-                        border-radius: 8px !important;
                     }
                     
-                    .wt-sidebar {
-                        display: none !important;
+                    /* IMAGES DE PROFIL */
+                    img[alt*="photo"], img[alt*="Photo"],
+                    .wt-individual-silhouette {
+                        width: 100px !important;
+                        height: 100px !important;
+                        border-radius: 50% !important;
+                        object-fit: cover !important;
+                        display: block !important;
+                        margin: 0 auto 16px auto !important;
                     }
                     
-                    .wt-chart-box {
-                        background: white !important;
-                        border: 2px solid #667eea !important;
-                        border-radius: 12px !important;
-                        padding: 10px !important;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-                    }
-                    
-                    .wt-individual-list-item, .person-box {
-                        background: white !important;
-                        border-radius: 12px !important;
-                        padding: 15px !important;
-                        margin: 8px 0 !important;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+                    /* LISTES D'INDIVIDUS */
+                    .wt-individual-list-item,
+                    .person-box {
                         border-left: 4px solid #667eea !important;
+                        margin-bottom: 2px !important;
                     }
                     
-                    .badge {
+                    /* BADGES */
+                    .badge, .label, .tag {
                         background: #667eea !important;
                         color: white !important;
-                        padding: 4px 12px !important;
+                        padding: 4px 10px !important;
                         border-radius: 12px !important;
                         font-size: 12px !important;
+                        font-weight: 600 !important;
+                        display: inline-block !important;
                     }
                     
-                    * {
-                        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1) !important;
+                    /* ESPACEMENTS */
+                    p { margin: 8px 0 !important; }
+                    ul, ol { padding-left: 20px !important; }
+                    li { margin: 6px 0 !important; }
+                    
+                    /* GRAPHIQUES ET CHARTS */
+                    .wt-chart-box, svg {
+                        max-width: 100% !important;
+                        height: auto !important;
                     }
                     
-                    .breadcrumb {
-                        display: none !important;
+                    /* BOUTONS DE FILTRE (sur la page d'accueil) */
+                    .btn-group, .btn-toolbar {
+                        display: flex !important;
+                        flex-wrap: wrap !important;
+                        gap: 8px !important;
+                        margin: 12px 0 !important;
+                    }
+                    
+                    .btn-group > * {
+                        flex: 1 1 auto !important;
+                        min-width: 80px !important;
                     }
                 `;
+                
                 document.head.appendChild(style);
+                
+                // Forcer le recalcul du layout
+                document.body.style.display = 'none';
+                document.body.offsetHeight;
+                document.body.style.display = '';
             })()
         """.trimIndent()
 
@@ -197,6 +375,7 @@ class WebViewManager(
 
     fun loadUrl(url: String) {
         showProgressBar()
+        hasAttemptedLogin = false
         webView.loadUrl(url)
     }
 
@@ -223,5 +402,9 @@ class WebViewManager(
         webView.clearCache(true)
         webView.clearHistory()
         CookieManager.getInstance().removeAllCookies(null)
+    }
+
+    fun executeJavaScript(script: String) {
+        webView.evaluateJavascript(script, null)
     }
 }

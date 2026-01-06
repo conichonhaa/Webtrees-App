@@ -111,6 +111,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
     private fun setupBottomNavigation() {
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -265,6 +270,7 @@ class MainActivity : AppCompatActivity() {
         val options = arrayOf(
             "🔄 Recharger la page",
             "🗑️ Effacer le cache",
+            "🌐 Modifier l'URL du site",
             "🐛 Voir l'URL actuelle",
             "⚙️ Reconfigurer l'application",
             "ℹ️ À propos"
@@ -279,7 +285,8 @@ class MainActivity : AppCompatActivity() {
                         Toast.makeText(this, "Rechargement...", Toast.LENGTH_SHORT).show()
                     }
                     1 -> clearCache()
-                    2 -> {
+                    2 -> showEditUrlDialog()
+                    3 -> {
                         val debugUrl = "$baseUrl/index.php?route=%2Ftree%2F$currentTreeId"
                         AlertDialog.Builder(this)
                             .setTitle("Debug URL")
@@ -290,8 +297,8 @@ class MainActivity : AppCompatActivity() {
                             .setNegativeButton("OK", null)
                             .show()
                     }
-                    3 -> reconfigureApp()
-                    4 -> showAboutDialog()
+                    4 -> reconfigureApp()
+                    5 -> showAboutDialog()
                 }
             }
             .show()
@@ -301,6 +308,54 @@ class MainActivity : AppCompatActivity() {
         webViewManager.clearCache()
         Toast.makeText(this, "Cache effacé", Toast.LENGTH_SHORT).show()
         goToHome()
+    }
+
+    private fun showEditUrlDialog() {
+        val currentUrl = prefsManager.getSiteUrl() ?: ""
+
+        val input = EditText(this).apply {
+            setText(currentUrl)
+            hint = "https://exemple.com/webtrees"
+            setPadding(50, 30, 50, 30)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Modifier l'URL du site")
+            .setMessage("URL actuelle :\n$currentUrl\n\nEntrez la nouvelle URL :")
+            .setView(input)
+            .setPositiveButton("Enregistrer") { _, _ ->
+                val newUrl = input.text.toString().trim()
+
+                if (newUrl.isEmpty()) {
+                    Toast.makeText(this, "L'URL ne peut pas être vide", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
+                    Toast.makeText(this, "L'URL doit commencer par http:// ou https://", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+
+                // Sauvegarder la nouvelle URL
+                prefsManager.saveSiteUrl(newUrl)
+                baseUrl = normalizeUrl(newUrl)
+
+                // Afficher confirmation
+                Toast.makeText(this, "URL mise à jour !", Toast.LENGTH_SHORT).show()
+
+                // Recharger la page d'accueil
+                webViewManager.clearCache()
+                goToHome()
+            }
+            .setNegativeButton("Annuler", null)
+            .setNeutralButton("Tester") { _, _ ->
+                val testUrl = input.text.toString().trim()
+                if (testUrl.isNotEmpty()) {
+                    webViewManager.loadUrl(testUrl)
+                    Toast.makeText(this, "Test de l'URL...", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     private fun reconfigureApp() {

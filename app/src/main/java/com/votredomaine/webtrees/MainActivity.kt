@@ -7,6 +7,7 @@ import android.widget.Toast
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import android.webkit.WebView
@@ -46,7 +47,20 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupToolbar()
         setupBottomNavigation()
+        setupBackPressHandler()
         loadWebtrees()
+    }
+
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webViewManager.canGoBack()) {
+                    webViewManager.goBack()
+                } else {
+                    finish()
+                }
+            }
+        })
     }
 
     private fun initViews() {
@@ -356,14 +370,5 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, SetupActivity::class.java)
         startActivity(intent)
         finish()
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (webViewManager.canGoBack()) {
-            webViewManager.goBack()
-        } else {
-            super.onBackPressed()
-        }
     }
 }

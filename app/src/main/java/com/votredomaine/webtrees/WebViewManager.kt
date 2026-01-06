@@ -23,6 +23,20 @@ class WebViewManager(
     var onPageLoadedListener: (() -> Unit)? = null
 
     fun setupWebView() {
+        // Ajouter l'interface JavaScript pour les toasts
+        webView.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun showToast(message: String) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.widget.Toast.makeText(
+                        webView.context,
+                        message,
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }, "AndroidInterface")
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -67,7 +81,7 @@ class WebViewManager(
                     view?.postDelayed({
                         injectAggressiveCSS()
                         onPageLoadedListener?.invoke()
-                    }, 500)
+                    }, 2000)  // Augmenté à 2 secondes
                 }
 
                 hideProgressBar()
@@ -253,6 +267,57 @@ class WebViewManager(
                         background: #f9f9f9 !important;
                     }
                     
+                    /* FORCER LES STATISTIQUES EN MODE VERTICAL */
+                    /* Cibler les tables de statistiques (après chargement AJAX) */
+                    .wt-facts-table tbody tr,
+                    table.table-sm tbody tr,
+                    table.wt-facts-table tbody tr {
+                        display: block !important;
+                        padding: 16px 12px !important;
+                        border-bottom: 1px solid #e0e0e0 !important;
+                        margin-bottom: 0 !important;
+                    }
+                    
+                    .wt-facts-table tbody td,
+                    table.table-sm tbody td,
+                    table.wt-facts-table tbody td {
+                        display: block !important;
+                        width: 100% !important;
+                        text-align: left !important;
+                        padding: 3px 0 !important;
+                        border: none !important;
+                        float: none !important;
+                    }
+                    
+                    /* Premier TD = Titre (Première naissance, Dernier décès, etc.) */
+                    .wt-facts-table tbody td:first-child,
+                    table.table-sm tbody td:first-child,
+                    table.wt-facts-table tbody td:first-child {
+                        font-weight: 700 !important;
+                        font-size: 15px !important;
+                        color: #667eea !important;
+                        margin-bottom: 10px !important;
+                        display: block !important;
+                    }
+                    
+                    /* Deuxième TD = Contenu (nom + détails) */
+                    .wt-facts-table tbody td:last-child,
+                    table.table-sm tbody td:last-child,
+                    table.wt-facts-table tbody td:last-child {
+                        font-weight: 400 !important;
+                        color: #333 !important;
+                        line-height: 1.7 !important;
+                        display: block !important;
+                    }
+                    
+                    /* Forcer les liens et éléments inline à s'afficher en block */
+                    .wt-facts-table tbody td:last-child a,
+                    .wt-facts-table tbody td:last-child br,
+                    table.table-sm tbody td:last-child a,
+                    table.table-sm tbody td:last-child br {
+                        display: inline !important;
+                    }
+                    
                     /* LIENS */
                     a {
                         color: #667eea !important;
@@ -362,6 +427,62 @@ class WebViewManager(
                 `;
                 
                 document.head.appendChild(style);
+                
+                // Fonction pour forcer les styles sur les statistiques
+                function forceStatsStyles() {
+                    var found = false;
+                    
+                    // Chercher les lignes de statistiques (elles utilisent TH au lieu de TD!)
+                    var rows = document.querySelectorAll('table tbody tr');
+                    
+                    if (rows.length > 0) {
+                        found = true;
+                        console.log('Found ' + rows.length + ' stat rows');
+                        
+                        rows.forEach(function(tr) {
+                            // Vérifier si la ligne contient un TH (titre de statistique)
+                            var th = tr.querySelector('th');
+                            var td = tr.querySelector('td');
+                            
+                            if (th && td) {
+                                // Forcer l'affichage en block avec !important
+                                tr.setAttribute('style', 'display: block !important; padding: 16px 12px !important; border-bottom: 1px solid #e0e0e0 !important; width: 100% !important;');
+                                
+                                // TH = Titre avec !important sur TOUT
+                                th.setAttribute('style', 'display: block !important; width: 100% !important; text-align: left !important; padding: 3px 0 !important; border: none !important; font-weight: 700 !important; font-size: 16px !important; color: #667eea !important; margin-bottom: 10px !important;');
+                                
+                                // TD = Contenu avec !important sur TOUT
+                                td.setAttribute('style', 'display: block !important; width: 100% !important; text-align: left !important; padding: 3px 0 !important; border: none !important; font-weight: 400 !important; color: #333 !important; line-height: 1.7 !important;');
+                            }
+                        });
+                    }
+                    
+                    if (found) {
+                        console.log('Stats tables styled successfully!');
+                        try {
+                            window.AndroidInterface.showToast('Stats OK!');
+                        } catch(e) {}
+                    }
+                    
+                    return found;
+                }
+                
+                // Appliquer immédiatement puis répéter plusieurs fois
+                setTimeout(forceStatsStyles, 500);
+                setTimeout(forceStatsStyles, 1000);
+                setTimeout(forceStatsStyles, 1500);
+                setTimeout(forceStatsStyles, 2000);
+                setTimeout(forceStatsStyles, 2500);
+                setTimeout(forceStatsStyles, 3000);
+                setTimeout(forceStatsStyles, 4000);
+                setTimeout(forceStatsStyles, 5000);
+                setTimeout(forceStatsStyles, 6000);
+                setTimeout(forceStatsStyles, 7000);
+                setTimeout(forceStatsStyles, 8000);
+                setTimeout(forceStatsStyles, 10000);
+                
+                // Et continuer à appliquer toutes les 5 secondes indéfiniment
+                setInterval(forceStatsStyles, 5000);
                 
                 // Forcer le recalcul du layout
                 document.body.style.display = 'none';

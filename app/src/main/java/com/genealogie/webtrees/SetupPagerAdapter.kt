@@ -1,4 +1,4 @@
-package com.votredomaine.webtrees
+package com.genealogie.webtrees
 
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity

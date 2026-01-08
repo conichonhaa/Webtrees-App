@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.votredomaine.webtrees"
+    namespace = "com.genealogie.webtrees"
     compileSdk = 34
 
     defaultConfig {

@@ -1,4 +1,4 @@
-package com.votredomaine.webtrees
+package com.genealogie.webtrees
 
 import android.os.Bundle
 import android.view.LayoutInflater

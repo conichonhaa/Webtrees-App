@@ -94,6 +94,10 @@ class MainActivity : AppCompatActivity() {
 
         toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.action_optimize -> {
+                    optimizeDisplay()
+                    true
+                }
                 R.id.action_change_tree -> {
                     showTreeMenu()
                     true
@@ -112,7 +116,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
+        menuInflater.inflate(R.menu.main_menu_final, menu)
         return true
     }
 
@@ -269,6 +273,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val options = arrayOf(
             "🔄 Recharger la page",
+            "✨ Optimiser l'affichage",
             "🗑️ Effacer le cache",
             "🌐 Modifier l'URL du site",
             "🐛 Voir l'URL actuelle",
@@ -284,9 +289,10 @@ class MainActivity : AppCompatActivity() {
                         webView.reload()
                         Toast.makeText(this, "Rechargement...", Toast.LENGTH_SHORT).show()
                     }
-                    1 -> clearCache()
-                    2 -> showEditUrlDialog()
-                    3 -> {
+                    1 -> optimizeDisplay()
+                    2 -> clearCache()
+                    3 -> showEditUrlDialog()
+                    4 -> {
                         val debugUrl = "$baseUrl/index.php?route=%2Ftree%2F$currentTreeId"
                         AlertDialog.Builder(this)
                             .setTitle("Debug URL")
@@ -297,11 +303,36 @@ class MainActivity : AppCompatActivity() {
                             .setNegativeButton("OK", null)
                             .show()
                     }
-                    4 -> reconfigureApp()
-                    5 -> showAboutDialog()
+                    5 -> reconfigureApp()
+                    6 -> showAboutDialog()
                 }
             }
             .show()
+    }
+
+    private fun optimizeDisplay() {
+        val js = """
+            javascript:(function() {
+                var rows = document.querySelectorAll('table tbody tr');
+                var count = 0;
+                rows.forEach(function(tr) {
+                    var th = tr.querySelector('th');
+                    var td = tr.querySelector('td');
+                    if (th && td) {
+                        tr.setAttribute('style', 'display: block !important; padding: 16px 12px !important; border-bottom: 1px solid #e0e0e0 !important;');
+                        th.setAttribute('style', 'display: block !important; width: 100% !important; font-weight: 700 !important; font-size: 16px !important; color: #667eea !important; margin-bottom: 10px !important;');
+                        td.setAttribute('style', 'display: block !important; width: 100% !important; font-weight: 400 !important; color: #333 !important;');
+                        count++;
+                    }
+                });
+                if (count > 0) {
+                    try { window.AndroidInterface.showToast('Affichage optimisé !'); } catch(e) {}
+                } else {
+                    try { window.AndroidInterface.showToast('Aucune statistique trouvée'); } catch(e) {}
+                }
+            })()
+        """
+        webViewManager.executeJavaScript(js)
     }
 
     private fun clearCache() {

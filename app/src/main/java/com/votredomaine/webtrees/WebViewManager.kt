@@ -81,7 +81,7 @@ class WebViewManager(
                     view?.postDelayed({
                         injectAggressiveCSS()
                         onPageLoadedListener?.invoke()
-                    }, 2000)  // Augmenté à 2 secondes
+                    }, 1000)  // Réduit à 1 seconde
                 }
 
                 hideProgressBar()
@@ -467,21 +467,14 @@ class WebViewManager(
                     return found;
                 }
                 
-                // Appliquer immédiatement puis répéter plusieurs fois
+                // Appliquer rapidement puis quelques tentatives
                 setTimeout(forceStatsStyles, 500);
                 setTimeout(forceStatsStyles, 1000);
-                setTimeout(forceStatsStyles, 1500);
                 setTimeout(forceStatsStyles, 2000);
-                setTimeout(forceStatsStyles, 2500);
                 setTimeout(forceStatsStyles, 3000);
-                setTimeout(forceStatsStyles, 4000);
                 setTimeout(forceStatsStyles, 5000);
-                setTimeout(forceStatsStyles, 6000);
-                setTimeout(forceStatsStyles, 7000);
-                setTimeout(forceStatsStyles, 8000);
-                setTimeout(forceStatsStyles, 10000);
                 
-                // Et continuer à appliquer toutes les 5 secondes indéfiniment
+                // Et continuer à appliquer toutes les 5 secondes
                 setInterval(forceStatsStyles, 5000);
                 
                 // Forcer le recalcul du layout

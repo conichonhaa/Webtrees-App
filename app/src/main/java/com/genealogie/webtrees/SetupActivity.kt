@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.button.MaterialButton
@@ -36,6 +37,17 @@ class SetupActivity : AppCompatActivity() {
         setupViewPager()
         setupButtonListeners()
         updateIndicators()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (currentStep > 0) {
+                    viewPager.currentItem = currentStep - 1
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
     private fun initViews() {
@@ -123,12 +135,5 @@ class SetupActivity : AppCompatActivity() {
         finish()
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (currentStep > 0) {
-            viewPager.currentItem = currentStep - 1
-        } else {
-            super.onBackPressed()
-        }
-    }
+
 }

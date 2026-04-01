@@ -40,6 +40,20 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.WebtreesApp" />
+
+        <!-- INDIVIDUALS - Liste et recherche d'individus -->
+        <activity
+            android:name=".IndividualsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WebtreesApp" />
+
+        <!-- PERSON DETAIL - Fiche individu -->
+        <activity
+            android:name=".PersonDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.WebtreesApp" />
     </application>
 
 </manifest>

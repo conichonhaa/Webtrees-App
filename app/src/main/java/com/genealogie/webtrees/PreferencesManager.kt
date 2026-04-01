@@ -14,6 +14,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_PASSWORD = "password"
         private const val KEY_DEFAULT_TREE = "default_tree"
         private const val KEY_SETUP_COMPLETED = "setup_completed"
+        private const val KEY_OAUTH_CLIENT_ID = "oauth_client_id"
+        private const val KEY_OAUTH_CLIENT_SECRET = "oauth_client_secret"
     }
     
     // Sauvegarder l'URL du site
@@ -59,6 +61,17 @@ class PreferencesManager(context: Context) {
         return prefs.getBoolean(KEY_SETUP_COMPLETED, false)
     }
     
+    fun saveOAuthCredentials(clientId: String, clientSecret: String) {
+        prefs.edit()
+            .putString(KEY_OAUTH_CLIENT_ID, clientId)
+            .putString(KEY_OAUTH_CLIENT_SECRET, clientSecret)
+            .apply()
+    }
+
+    fun getOAuthClientId(): String? = prefs.getString(KEY_OAUTH_CLIENT_ID, null)
+    fun getOAuthClientSecret(): String? = prefs.getString(KEY_OAUTH_CLIENT_SECRET, null)
+    fun hasOAuthCredentials() = !getOAuthClientId().isNullOrEmpty() && !getOAuthClientSecret().isNullOrEmpty()
+
     // Effacer toutes les données (pour se déconnecter)
     fun clearAll() {
         prefs.edit().clear().apply()

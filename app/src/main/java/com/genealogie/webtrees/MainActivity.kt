@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_stats -> {
-                    goToLists()
+                    openIndividuals()
                     true
                 }
                 R.id.nav_profile -> {
@@ -256,11 +256,37 @@ class MainActivity : AppCompatActivity() {
         webViewManager.loadUrl(searchUrl)
     }
 
-    private fun goToLists() {
-        // Format: route=%2Ftree%2F[arbre]%2Findividual-list
-        val listUrl = "$baseUrl/index.php?route=%2Ftree%2F${currentTreeId}%2Findividual-list"
-        Log.d("MainActivity", "List URL: $listUrl")
-        webViewManager.loadUrl(listUrl)
+    private fun openIndividuals() {
+        if (!prefsManager.hasOAuthCredentials()) {
+            showOAuthCredentialsDialog()
+            return
+        }
+        startActivity(Intent(this, IndividualsActivity::class.java))
+    }
+
+    private fun showOAuthCredentialsDialog() {
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 20)
+        }
+        val inputId = EditText(this).apply { hint = "Client ID"; setText(prefsManager.getOAuthClientId() ?: "") }
+        val inputSecret = EditText(this).apply { hint = "Client Secret"; setText(prefsManager.getOAuthClientSecret() ?: "") }
+        layout.addView(android.widget.TextView(this).apply { text = "Identifiants OAuth2 webtrees-API" ; setPadding(0,0,0,16) })
+        layout.addView(inputId)
+        layout.addView(inputSecret)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Configuration API")
+            .setView(layout)
+            .setPositiveButton("Enregistrer") { _, _ ->
+                val id = inputId.text.toString().trim()
+                val secret = inputSecret.text.toString().trim()
+                if (id.isNotEmpty() && secret.isNotEmpty()) {
+                    prefsManager.saveOAuthCredentials(id, secret)
+                    startActivity(Intent(this, IndividualsActivity::class.java))
+                }
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
     }
 
     private fun goToReports() {
@@ -276,6 +302,7 @@ class MainActivity : AppCompatActivity() {
             "✨ Optimiser l'affichage",
             "🗑️ Effacer le cache",
             "🌐 Modifier l'URL du site",
+            "🔑 Identifiants API (OAuth2)",
             "🐛 Voir l'URL actuelle",
             "⚙️ Reconfigurer l'application",
             "ℹ️ À propos"
@@ -292,7 +319,8 @@ class MainActivity : AppCompatActivity() {
                     1 -> optimizeDisplay()
                     2 -> clearCache()
                     3 -> showEditUrlDialog()
-                    4 -> {
+                    4 -> showOAuthCredentialsDialog()
+                    5 -> {
                         val debugUrl = "$baseUrl/index.php?route=%2Ftree%2F$currentTreeId"
                         AlertDialog.Builder(this)
                             .setTitle("Debug URL")
@@ -303,8 +331,8 @@ class MainActivity : AppCompatActivity() {
                             .setNegativeButton("OK", null)
                             .show()
                     }
-                    5 -> reconfigureApp()
-                    6 -> showAboutDialog()
+                    6 -> reconfigureApp()
+                    7 -> showAboutDialog()
                 }
             }
             .show()

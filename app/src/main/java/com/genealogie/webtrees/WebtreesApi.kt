@@ -81,7 +81,30 @@ class WebtreesApi(
     private fun parsePerson(tree: String, xref: String, json: JSONObject): Person {
         val persons = json.optJSONArray("persons") ?: return Person(xref, tree)
         if (persons.length() == 0) return Person(xref, tree)
-        val p = persons.getJSONObject(0)
+
+        // Build a name map for all persons in the response (id -> full name)
+        val nameMap = mutableMapOf<String, String>()
+        for (i in 0 until persons.length()) {
+            val person = persons.getJSONObject(i)
+            val id = person.optString("id")
+            val fullText = person.optJSONArray("names")
+                ?.optJSONObject(0)
+                ?.optJSONArray("nameForms")
+                ?.optJSONObject(0)
+                ?.optString("fullText") ?: ""
+            if (id.isNotEmpty()) nameMap[id] = fullText
+        }
+
+        // Find the target person by xref
+        var targetPerson: org.json.JSONObject? = null
+        for (i in 0 until persons.length()) {
+            val person = persons.getJSONObject(i)
+            if (person.optString("id") == xref) {
+                targetPerson = person
+                break
+            }
+        }
+        val p = targetPerson ?: persons.getJSONObject(0)
 
         var givenName = ""
         var surname = ""
@@ -124,6 +147,51 @@ class WebtreesApi(
             }
         }
 
-        return Person(xref, tree, givenName, surname, birthDate, birthPlace, deathDate, deathPlace, gender)
+        // Parse relationships: marriages, parents, children
+        val marriages = mutableListOf<Marriage>()
+        val parents   = mutableListOf<PersonRef>()
+        val children  = mutableListOf<PersonRef>()
+
+        val relationships = json.optJSONArray("relationships")
+        if (relationships != null) {
+            for (i in 0 until relationships.length()) {
+                val rel = relationships.getJSONObject(i)
+                val type = rel.optString("type")
+                val p1 = rel.optJSONObject("person1")?.optString("resource")?.removePrefix("#persons/") ?: ""
+                val p2 = rel.optJSONObject("person2")?.optString("resource")?.removePrefix("#persons/") ?: ""
+
+                when {
+                    type.contains("Couple") && (p1 == xref || p2 == xref) -> {
+                        val spouseXref = if (p1 == xref) p2 else p1
+                        val spouseName = nameMap[spouseXref] ?: spouseXref
+                        var marDate = ""; var marPlace = ""
+                        val relFacts = rel.optJSONArray("facts")
+                        if (relFacts != null) {
+                            for (j in 0 until relFacts.length()) {
+                                val f = relFacts.getJSONObject(j)
+                                if (f.optString("type").contains("Marriage")) {
+                                    marDate  = f.optJSONObject("date")?.optString("original") ?: ""
+                                    marPlace = f.optJSONObject("place")?.optString("original") ?: ""
+                                }
+                            }
+                        }
+                        marriages.add(Marriage(marDate, marPlace, spouseXref, spouseName))
+                    }
+                    type.contains("ParentChild") && p2 == xref -> {
+                        // xref is the child → p1 is a parent
+                        val parentName = nameMap[p1] ?: p1
+                        if (p1.isNotEmpty()) parents.add(PersonRef(p1, parentName))
+                    }
+                    type.contains("ParentChild") && p1 == xref -> {
+                        // xref is the parent → p2 is a child
+                        val childName = nameMap[p2] ?: p2
+                        if (p2.isNotEmpty()) children.add(PersonRef(p2, childName))
+                    }
+                }
+            }
+        }
+
+        return Person(xref, tree, givenName, surname, birthDate, birthPlace, deathDate, deathPlace, gender,
+            marriages, parents, children)
     }
 }

@@ -163,6 +163,30 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Mariages -->
+            <LinearLayout
+                android:id="@+id/containerMarriages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- Parents -->
+            <LinearLayout
+                android:id="@+id/containerParents"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- Enfants -->
+            <LinearLayout
+                android:id="@+id/containerChildren"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
             <!-- Référence -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"

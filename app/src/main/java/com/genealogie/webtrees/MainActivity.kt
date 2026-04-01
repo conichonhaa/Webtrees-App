@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_search -> {
-                    goToSearch()
+                    openIndividuals()
                     true
                 }
                 R.id.nav_stats -> {

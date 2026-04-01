@@ -56,9 +56,6 @@ class SetupActivity : AppCompatActivity() {
         step1Indicator = findViewById(R.id.step1Indicator)
         step2Indicator = findViewById(R.id.step2Indicator)
         step3Indicator = findViewById(R.id.step3Indicator)
-
-        // Cacher le 3ème indicateur
-        step3Indicator.visibility = View.GONE
     }
 
     private fun setupViewPager() {
@@ -80,49 +77,53 @@ class SetupActivity : AppCompatActivity() {
             when (currentStep) {
                 0 -> handleStep1()
                 1 -> handleStep2()
+                2 -> handleStep3()
             }
         }
     }
 
     private fun handleStep1() {
         val fragment = adapter.fragments[0] as SetupUrlFragment
-
         if (fragment.validateUrl()) {
-            val url = fragment.getUrl()
-            prefsManager.saveSiteUrl(url)
+            prefsManager.saveSiteUrl(fragment.getUrl())
             viewPager.currentItem = 1
         }
     }
 
     private fun handleStep2() {
         val fragment = adapter.fragments[1] as SetupCredentialsFragment
-
         if (fragment.validateCredentials()) {
-            val username = fragment.getUsername()
-            val password = fragment.getPassword()
-            prefsManager.saveCredentials(username, password)
+            prefsManager.saveCredentials(fragment.getUsername(), fragment.getPassword())
+            viewPager.currentItem = 2
+        }
+    }
 
-            // Enregistrer un arbre par défaut bidon
+    private fun handleStep3() {
+        val fragment = adapter.fragments[2] as SetupApiFragment
+        if (fragment.validate()) {
+            prefsManager.saveOAuthCredentials(fragment.getClientId(), fragment.getClientSecret())
             prefsManager.saveDefaultTree("default")
             prefsManager.setSetupCompleted(true)
-
             Toast.makeText(this, "Configuration terminée !", Toast.LENGTH_SHORT).show()
             navigateToMainActivity()
         }
     }
 
     private fun updateIndicators() {
-        step1Indicator.setBackgroundResource(R.drawable.indicator_inactive)
-        step2Indicator.setBackgroundResource(R.drawable.indicator_inactive)
-
+        val inactive = R.drawable.indicator_inactive
+        val active   = R.drawable.indicator_active
+        step1Indicator.setBackgroundResource(inactive)
+        step2Indicator.setBackgroundResource(inactive)
+        step3Indicator.setBackgroundResource(inactive)
         when (currentStep) {
-            0 -> step1Indicator.setBackgroundResource(R.drawable.indicator_active)
-            1 -> step2Indicator.setBackgroundResource(R.drawable.indicator_active)
+            0 -> step1Indicator.setBackgroundResource(active)
+            1 -> step2Indicator.setBackgroundResource(active)
+            2 -> step3Indicator.setBackgroundResource(active)
         }
     }
 
     private fun updateButtonText() {
-        buttonNext.text = if (currentStep == 1) {
+        buttonNext.text = if (currentStep == 2) {
             getString(R.string.button_finish)
         } else {
             getString(R.string.button_next)
@@ -130,10 +131,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun navigateToMainActivity() {
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
-
-
 }

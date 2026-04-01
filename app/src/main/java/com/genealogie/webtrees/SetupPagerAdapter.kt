@@ -9,7 +9,7 @@ class SetupPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activ
     val fragments = listOf(
         SetupUrlFragment(),
         SetupCredentialsFragment(),
-        SetupTreeFragment()
+        SetupApiFragment()
     )
 
     override fun getItemCount(): Int = fragments.size

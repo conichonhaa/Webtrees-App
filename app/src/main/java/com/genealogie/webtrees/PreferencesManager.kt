@@ -2,12 +2,14 @@ package com.genealogie.webtrees
 
 import android.content.Context
 import android.content.SharedPreferences
+import org.json.JSONArray
+import org.json.JSONObject
 
 class PreferencesManager(context: Context) {
-    
-    private val prefs: SharedPreferences = 
+
+    private val prefs: SharedPreferences =
         context.getSharedPreferences("WebtreesPrefs", Context.MODE_PRIVATE)
-    
+
     companion object {
         private const val KEY_SITE_URL = "site_url"
         private const val KEY_USERNAME = "username"
@@ -16,6 +18,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_OAUTH_CLIENT_ID = "oauth_client_id"
         private const val KEY_OAUTH_CLIENT_SECRET = "oauth_client_secret"
+        private const val KEY_CACHED_TREES = "cached_trees"
     }
     
     // Sauvegarder l'URL du site
@@ -71,6 +74,29 @@ class PreferencesManager(context: Context) {
     fun getOAuthClientId(): String? = prefs.getString(KEY_OAUTH_CLIENT_ID, null)
     fun getOAuthClientSecret(): String? = prefs.getString(KEY_OAUTH_CLIENT_SECRET, null)
     fun hasOAuthCredentials() = !getOAuthClientId().isNullOrEmpty() && !getOAuthClientSecret().isNullOrEmpty()
+
+    fun saveCachedTrees(trees: List<Tree>) {
+        val arr = JSONArray()
+        trees.forEach { t ->
+            arr.put(JSONObject().apply {
+                put("id", t.id)
+                put("name", t.name)
+                put("title", t.title)
+            })
+        }
+        prefs.edit().putString(KEY_CACHED_TREES, arr.toString()).apply()
+    }
+
+    fun getCachedTrees(): List<Tree> {
+        val str = prefs.getString(KEY_CACHED_TREES, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(str)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                Tree(obj.getInt("id"), obj.getString("name"), obj.getString("title"))
+            }
+        } catch (e: Exception) { emptyList() }
+    }
 
     // Effacer toutes les données (pour se déconnecter)
     fun clearAll() {

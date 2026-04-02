@@ -8,10 +8,12 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import android.webkit.WebView
 import android.util.Log
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
     private var baseUrl: String = ""
     private var currentTreeId: String = "sorciers"
+    private var cachedTrees: List<Tree> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,12 +46,18 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "Loaded saved tree: $currentTreeId")
         }
 
+        // Load cached trees immediately (sync, no network)
+        cachedTrees = prefsManager.getCachedTrees()
+
         initViews()
         setupWebView()
         setupToolbar()
         setupBottomNavigation()
         setupBackPressHandler()
         loadWebtrees()
+
+        // Refresh tree list from API in background on every start
+        refreshTreesFromApi()
     }
 
     private fun setupBackPressHandler() {
@@ -167,29 +176,44 @@ class MainActivity : AppCompatActivity() {
         return normalized
     }
 
-    private fun updateToolbarTitle(treeName: String) {
-        val displayName = when(treeName) {
-            "agp" -> "AGP"
-            "disney" -> "Disney"
-            "sorciers" -> "Sorciers"
-            "Famille" -> "Famille"
-            else -> treeName.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    private fun refreshTreesFromApi() {
+        if (!prefsManager.hasOAuthCredentials()) return
+        val siteUrl      = prefsManager.getSiteUrl() ?: return
+        val clientId     = prefsManager.getOAuthClientId() ?: return
+        val clientSecret = prefsManager.getOAuthClientSecret() ?: return
+        val api = WebtreesApi(siteUrl, clientId, clientSecret)
+        lifecycleScope.launch {
+            try {
+                val trees = api.getTrees()
+                if (trees.isNotEmpty()) {
+                    cachedTrees = trees
+                    prefsManager.saveCachedTrees(trees)
+                    Log.d("MainActivity", "Trees refreshed from API: ${trees.map { it.name }}")
+                }
+            } catch (e: Exception) {
+                Log.w("MainActivity", "Could not refresh trees: ${e.message}")
+            }
         }
+    }
 
+    private fun updateToolbarTitle(treeId: String) {
+        val displayName = cachedTrees.find { it.name == treeId }?.title
+            ?: treeId.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         toolbar.title = "$displayName ▼"
     }
 
     private fun showTreeMenu() {
-        val trees = arrayOf(
-            "sorciers" to "🧙 Sorciers",
-            "disney" to "🏰 Disney",
-            "agp" to "📜 AGP",
-            "Famille" to "👨‍👩‍👧‍👦 Famille",
-            "autre" to "➕ Autre arbre..."
-        )
+        // Build list from API cache, fallback to empty if not yet loaded
+        val apiTrees = cachedTrees.map { it.name to it.title }
+        val allEntries = (if (apiTrees.isNotEmpty()) apiTrees else listOf(
+            "sorciers" to "Sorciers",
+            "disney" to "Disney",
+            "agp" to "AGP",
+            "Famille" to "Famille"
+        )) + listOf("__custom__" to "➕ Autre arbre...")
 
-        val treeNames = trees.map { it.second }.toTypedArray()
-        val treeIds = trees.map { it.first }
+        val treeNames = allEntries.map { it.second }.toTypedArray()
+        val treeIds   = allEntries.map { it.first }
 
         var selectedIndex = treeIds.indexOf(currentTreeId)
         if (selectedIndex == -1) selectedIndex = 0
@@ -197,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Choisir un arbre généalogique")
             .setSingleChoiceItems(treeNames, selectedIndex) { dialog, which ->
-                if (treeNames[which].contains("Autre")) {
+                if (treeIds[which] == "__custom__") {
                     dialog.dismiss()
                     showCustomTreeInput()
                 } else {
@@ -459,13 +483,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getTreeDisplayName(treeId: String): String {
-        return when(treeId) {
-            "sorciers" -> "🧙 Sorciers"
-            "disney" -> "🏰 Disney"
-            "agp" -> "📜 AGP"
-            "Famille" -> "👨‍👩‍👧‍👦 Famille"
-            else -> treeId
-        }
+        return cachedTrees.find { it.name == treeId }?.title ?: treeId
     }
 
     private fun showLogoutDialog() {
